@@ -2,16 +2,10 @@ from pathlib import Path
 
 import pytest
 
+from executable_helpers import make_executable
+
 from backend.audiveris_locator import find_audiveris
 from backend.errors import AudiverisNotFoundError
-
-
-def make_executable(directory: Path, name: str = "Audiveris") -> Path:
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / name
-    path.write_text("#!/bin/sh\n")
-    path.chmod(0o755)
-    return path
 
 
 @pytest.fixture(autouse=True)

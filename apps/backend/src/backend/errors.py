@@ -8,7 +8,19 @@ class BackendError(Exception):
     pass
 
 
-class AudiverisNotFoundError(BackendError):
+class ExecutableNotFoundError(BackendError):
+    pass
+
+
+class AudiverisNotFoundError(ExecutableNotFoundError):
+    pass
+
+
+class MuseScoreNotFoundError(ExecutableNotFoundError):
+    pass
+
+
+class CancelledError(BackendError):
     pass
 
 
@@ -32,3 +44,10 @@ class ValidationFailedError(BackendError):
         findings = "; ".join(finding.format() for finding in report.errors)
         super().__init__(f"MusicXML has validation errors (use --force to convert anyway): {findings}")
         self.report = report
+
+
+class RenderFailedError(BackendError):
+    def __init__(self, returncode: int, stderr: str):
+        super().__init__(f"MuseScore failed with exit code {returncode}: {stderr}")
+        self.returncode = returncode
+        self.stderr = stderr
