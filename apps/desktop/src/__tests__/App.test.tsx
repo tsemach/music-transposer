@@ -74,6 +74,9 @@ test("a conversion shows progress and then the result card", async () => {
   expect(await screen.findByRole("progressbar")).toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "Tenor part ready" })).toBeInTheDocument();
   expect(screen.getByText("Up a perfect 4th (same sounding pitch)")).toBeInTheDocument();
+  expect(screen.getByText("1 thing to check in the original")).toBeInTheDocument();
+  expect(screen.getByText("Gymnopedie.tenor.pdf")).toBeInTheDocument();
+  expect(screen.getByText("/music", { exact: false })).toBeInTheDocument();
   expect(pipelineRequests(sent)[0]?.params).toMatchObject({ pdf: "/music/שיר.pdf", source: "alto", register: "auto" });
 });
 

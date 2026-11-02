@@ -65,7 +65,7 @@ def _warnings(score: stream.Score, source: SaxophoneKind, interval: ChosenInterv
         article = "an" if declared == "alto" else "a"
         warnings.append(
             f"Part is declared as {article} {declared} saxophone (name or transposition) "
-            f"but --from {source} was given"
+            f"but the source instrument was given as {source}"
         )
     if interval.out_of_range:
         warnings.append(

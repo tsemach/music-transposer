@@ -1,5 +1,6 @@
 import type { PipelineResult } from "../backend/protocol";
 import { describeInterval } from "../lib/describeInterval";
+import { baseName, dirName } from "../lib/fileName";
 import { FindingsList } from "./FindingsList";
 
 interface Props {
@@ -16,6 +17,9 @@ export function ResultCard({ result, target, onOpenPdf, onReveal, onReset }: Pro
     <section className="card card-success">
       <h2>{`${target} part ready`}</h2>
       <p className="interval">{describeInterval(result.interval.name, result.interval.register)}</p>
+      <p className="saved">
+        Saved as <strong dir="auto">{baseName(result.pdf)}</strong> in <span dir="auto">{dirName(result.pdf)}</span>
+      </p>
       {hasErrors && (
         <p className="caution">Converted despite errors in the scanned music. Check the result carefully.</p>
       )}
@@ -29,7 +33,7 @@ export function ResultCard({ result, target, onOpenPdf, onReveal, onReset }: Pro
       ))}
       {result.findings.length > 0 && (
         <details className="options">
-          <summary>{`${result.findings.length} things to check in the original`}</summary>
+          <summary>{`${result.findings.length} ${result.findings.length === 1 ? "thing" : "things"} to check in the original`}</summary>
           <FindingsList findings={result.findings} />
         </details>
       )}
