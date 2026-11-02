@@ -1,7 +1,61 @@
 from pathlib import Path
 
 from backend import cli
-from backend.errors import AudiverisNotFoundError
+from backend.errors import AudiverisNotFoundError, InvalidInputError
+from backend.validate.report import Finding, ValidationReport
+
+ERROR_REPORT = ValidationReport([Finding("empty-measure", "error", "34", "no notes")])
+WARNING_REPORT = ValidationReport([Finding("orphan-ending", "warning", "24", "no repeat")])
+
+
+def test_validate_prints_findings_and_exits_one_on_error(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "validate_musicxml", lambda path: ERROR_REPORT)
+
+    code = cli.main(["validate", str(tmp_path / "a.musicxml")])
+
+    assert code == 1
+    assert "bar 34: error empty-measure: no notes" in capsys.readouterr().out
+
+
+def test_validate_strict_fails_on_warning_only(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "validate_musicxml", lambda path: WARNING_REPORT)
+    target = str(tmp_path / "a.musicxml")
+
+    assert cli.main(["validate", target]) == 0
+    assert cli.main(["validate", target, "--strict"]) == 1
+
+
+def test_validate_clean_file_exits_zero(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "validate_musicxml", lambda path: ValidationReport([]))
+
+    assert cli.main(["validate", str(tmp_path / "a.musicxml")]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_convert_prints_validation_findings_to_stderr_but_exits_zero(monkeypatch, tmp_path, capsys):
+    result_path = tmp_path / "a.musicxml"
+    monkeypatch.setattr(cli, "convert_pdf", lambda pdf, out, audiveris=None: [result_path])
+    monkeypatch.setattr(cli, "validate_musicxml", lambda path: WARNING_REPORT)
+
+    code = cli.main(["convert", str(tmp_path / "a.pdf")])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out.strip() == str(result_path)
+    assert "a.musicxml" in captured.err and "bar 24: warning orphan-ending" in captured.err
+
+
+def test_convert_reports_validation_failure_without_failing(monkeypatch, tmp_path, capsys):
+    def unreadable(path):
+        raise InvalidInputError("cannot read")
+
+    monkeypatch.setattr(cli, "convert_pdf", lambda pdf, out, audiveris=None: [tmp_path / "a.musicxml"])
+    monkeypatch.setattr(cli, "validate_musicxml", unreadable)
+
+    code = cli.main(["convert", str(tmp_path / "a.pdf")])
+
+    assert code == 0
+    assert "cannot read" in capsys.readouterr().err
 
 
 def test_cli_prints_paths_and_returns_zero(monkeypatch, tmp_path, capsys):
