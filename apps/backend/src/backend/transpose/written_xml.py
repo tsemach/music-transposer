@@ -5,7 +5,7 @@ from xml.etree.ElementTree import Element
 
 def fix_for_musescore(path: Path) -> None:
     tree = ElementTree.parse(path)
-    changed = _drop_wedge_spread(tree) | _merge_tempo_words(tree)
+    changed = _drop_wedge_spread(tree) | _merge_tempo_words(tree) | _hide_staff_labels(tree)
     if changed:
         tree.write(path, encoding="utf-8", xml_declaration=True)
 
@@ -29,6 +29,14 @@ def _merge_tempo_words(tree: ElementTree.ElementTree) -> bool:
                 parent.remove(words)
                 merged = True
     return merged
+
+
+def _hide_staff_labels(tree: ElementTree.ElementTree) -> bool:
+    # the instrument is named in the title instead of beside every staff
+    labels = [*tree.iter("part-name"), *tree.iter("part-abbreviation")]
+    for label in labels:
+        label.set("print-object", "no")
+    return bool(labels)
 
 
 def _is_words_only(direction: Element) -> bool:

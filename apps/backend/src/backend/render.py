@@ -1,10 +1,22 @@
 import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 
 from .errors import InvalidInputError, RenderFailedError
 from .process import run_process
+
+# Without a cap MuseScore stretches the systems down the page to fill it.
+SYSTEM_SPACING_STYLE = """<?xml version="1.0" encoding="UTF-8"?>
+<museScore version="4.00">
+  <Style>
+    <enableVerticalSpread>0</enableVerticalSpread>
+    <minSystemDistance>8.5</minSystemDistance>
+    <maxSystemDistance>12</maxSystemDistance>
+  </Style>
+</museScore>
+"""
 
 
 def render_pdf(
@@ -21,13 +33,16 @@ def render_pdf(
     command = [str(musescore)]
     if musescore.name.lower().endswith(".appimage"):
         command.append("--appimage-extract-and-run")
-    command += ["-o", str(out_pdf), str(musicxml)]
     env = {"QT_QPA_PLATFORM": "offscreen"} if sys.platform.startswith("linux") else None
 
-    try:
-        completed = run_process(command, timeout_s, cancel, env)
-    except subprocess.TimeoutExpired as error:
-        raise RenderFailedError(-1, f"timed out after {timeout_s}s") from error
+    with tempfile.TemporaryDirectory() as style_dir:
+        style = Path(style_dir) / "ascurix.mss"
+        style.write_text(SYSTEM_SPACING_STYLE, encoding="utf-8")
+        command += ["-S", str(style), "-o", str(out_pdf), str(musicxml)]
+        try:
+            completed = run_process(command, timeout_s, cancel, env)
+        except subprocess.TimeoutExpired as error:
+            raise RenderFailedError(-1, f"timed out after {timeout_s}s") from error
 
     if completed.returncode != 0:
         raise RenderFailedError(completed.returncode, completed.stderr)

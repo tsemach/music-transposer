@@ -103,6 +103,18 @@ def test_appimage_name_adds_extract_and_run_flag(monkeypatch, tmp_path, score):
     assert args_file.read_text(encoding="utf-8").splitlines()[0] == "--appimage-extract-and-run"
 
 
+def test_style_tightens_system_spacing_and_is_cleaned_up(monkeypatch, tmp_path, musescore, score):
+    copy = tmp_path / "style-copy.txt"
+    monkeypatch.setenv("FAKE_STYLE_COPY", str(copy))
+
+    render_pdf(score, tmp_path / "score.pdf", musescore)
+
+    style_path, style = copy.read_text(encoding="utf-8").split("\n", 1)
+    assert "<maxSystemDistance>12</maxSystemDistance>" in style
+    assert "<enableVerticalSpread>0</enableVerticalSpread>" in style
+    assert not Path(style_path).exists()
+
+
 def test_cancel_raises_cancelled(monkeypatch, tmp_path, musescore, score):
     monkeypatch.setenv("FAKE_MODE", "sleep")
     cancel = threading.Event()

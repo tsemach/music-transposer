@@ -152,12 +152,32 @@ def test_hard_link_to_input_is_refused(tmp_path):
     assert "<step>C</step>" in source.read_text(encoding="utf-8")
 
 
-def test_default_title_from_file_stem(tmp_path):
+def test_default_title_from_file_stem_names_the_target_instrument(tmp_path):
     source = write_score(tmp_path, [quarters(4)], name="gymnopedie-no-1-alto-saxophone.musicxml")
 
     outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto")
 
-    assert "<movement-title>Gymnopedie No 1</movement-title>" in outcome.out_path.read_text(encoding="utf-8")
+    written = outcome.out_path.read_text(encoding="utf-8")
+    assert "<movement-title>Gymnopedie No 1 - Tenor Saxophone</movement-title>" in written
+
+
+def test_tenor_source_titles_the_alto_part(tmp_path):
+    source = write_score(tmp_path, [quarters(4)], name="song-tenor.musicxml")
+
+    outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "tenor")
+
+    assert "<movement-title>Song - Alto Saxophone</movement-title>" in outcome.out_path.read_text(encoding="utf-8")
+
+
+def test_staff_labels_are_hidden_but_the_part_name_is_kept(tmp_path):
+    source = write_score(tmp_path, [quarters(4)])
+
+    outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto")
+
+    root = ElementTree.parse(outcome.out_path).getroot()
+    name, abbreviation = root.find(".//part-name"), root.find(".//part-abbreviation")
+    assert (name.text, name.get("print-object")) == ("Tenor Saxophone", "no")
+    assert (abbreviation.text, abbreviation.get("print-object")) == ("T. Sax.", "no")
 
 
 def test_explicit_title_overrides_default(tmp_path):

@@ -9,7 +9,7 @@ from ..errors import InvalidInputError, ValidationFailedError
 from ..validate import validate_musicxml
 from ..validate.report import ValidationReport
 from .register import ChosenInterval
-from .saxophones import Register, SaxophoneKind, target_of
+from .saxophones import Register, SaxophoneKind, part_name_for, target_of
 from .transposer import transpose_score
 from .written_xml import fix_for_musescore
 
@@ -42,16 +42,17 @@ def transpose_musicxml(
         raise ValidationFailedError(report)
 
     score = converter.parse(str(source_path), format="musicxml")
-    result = transpose_score(score, source, register, title or _default_title(source_path))
+    result = transpose_score(score, source, register, title or _default_title(source_path, source))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     result.score.write("musicxml", fp=str(out_path))
     fix_for_musescore(out_path)
     return TransposeOutcome(out_path, result.interval, report, _warnings(score, source, result.interval))
 
 
-def _default_title(source_path: Path) -> str:
+def _default_title(source_path: Path, source: SaxophoneKind) -> str:
     words = re.split(r"[-_\s]+", source_path.stem)
-    return " ".join(word.capitalize() for word in words if word and word.lower() not in INSTRUMENT_WORDS)
+    name = " ".join(word.capitalize() for word in words if word and word.lower() not in INSTRUMENT_WORDS)
+    return " - ".join(part for part in (name, part_name_for(target_of(source))) if part)
 
 
 def _is_same_file(first: Path, second: Path) -> bool:
