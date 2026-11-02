@@ -29,6 +29,7 @@ def stubs(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline, "convert_pdf", write_musicxml([quarters(4)] * 2))
     monkeypatch.setattr(pipeline, "find_musescore", lambda override=None: Path("/fake/mscore"))
     monkeypatch.setattr(pipeline, "render_pdf", fake_render)
+    monkeypatch.setattr(pipeline, "enrich_musicxml", lambda pdf, musicxml: [])
     return type("Stubs", (), {"calls": calls, "write_musicxml": staticmethod(write_musicxml), "monkeypatch": monkeypatch})
 
 
@@ -105,3 +106,26 @@ def test_cancel_between_stages_raises_cancelled(stubs, tmp_path):
         run(tmp_path, cancel=cancel)
 
     assert stubs.calls["render"] == 0
+
+
+def test_pdf_markings_are_restored_into_the_original_before_transposing(stubs, tmp_path):
+    order = []
+    stubs.monkeypatch.setattr(pipeline, "enrich_musicxml", lambda pdf, musicxml: order.append(("enrich", pdf, musicxml)) or [])
+    real_transpose = pipeline.transpose_musicxml
+    stubs.monkeypatch.setattr(
+        pipeline, "transpose_musicxml", lambda *args, **kwargs: order.append(("transpose",)) or real_transpose(*args, **kwargs)
+    )
+
+    result, _ = run(tmp_path)
+
+    out = tmp_path / "out"
+    assert order == [("enrich", tmp_path / "song-alto.pdf", out / "song-alto.musicxml"), ("transpose",)]
+    assert result.warnings == []
+
+
+def test_enrichment_warnings_reach_the_result(stubs, tmp_path):
+    stubs.monkeypatch.setattr(pipeline, "enrich_musicxml", lambda pdf, musicxml: ["2 hairpin(s) found in the PDF could not be placed"])
+
+    result, _ = run(tmp_path)
+
+    assert result.warnings == ["2 hairpin(s) found in the PDF could not be placed"]

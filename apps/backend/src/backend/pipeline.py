@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .convert import convert_pdf
+from .enrich import enrich_musicxml
 from .errors import CancelledError, ValidationFailedError
 from .musescore_locator import find_musescore
 from .render import render_pdf
@@ -53,6 +54,7 @@ def run_pipeline(
     _raise_if_cancelled(cancel)
 
     progress("transpose", 65)
+    warnings += enrich_musicxml(pdf, original)
     target = target_of(source)
     transposed_path = out_dir / f"{pdf.stem}.{target}.musicxml"
     outcome = transpose_musicxml(original, transposed_path, source, register, force=True, report=report)

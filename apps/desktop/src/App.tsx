@@ -88,6 +88,14 @@ export function App({
     if (folder) update({ outDir: folder });
   };
 
+  const attempt = async (action: () => Promise<void>, failure: string) => {
+    try {
+      await action();
+    } catch (error) {
+      setNotice(`${failure}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const convert = (force: boolean) => {
     if (!pdf) return;
     const params: PipelineParams = {
@@ -130,8 +138,8 @@ export function App({
         <ResultCard
           result={job.result}
           target={target}
-          onOpenPdf={() => void openPath(job.result.pdf)}
-          onReveal={() => void revealPath(job.result.pdf)}
+          onOpenPdf={() => void attempt(() => openPath(job.result.pdf), "Could not open the PDF")}
+          onReveal={() => void attempt(() => revealPath(job.result.pdf), "Could not show the folder")}
           onReset={() => {
             setPdf(null);
             reset();

@@ -11,6 +11,7 @@ from ..validate.report import ValidationReport
 from .register import ChosenInterval
 from .saxophones import Register, SaxophoneKind, target_of
 from .transposer import transpose_score
+from .written_xml import fix_for_musescore
 
 SEMITONES_TO_KIND: dict[int, SaxophoneKind] = {-9: "alto", -14: "tenor"}
 INSTRUMENT_WORDS = {"alto", "tenor", "sax", "saxophone"}
@@ -44,6 +45,7 @@ def transpose_musicxml(
     result = transpose_score(score, source, register, title or _default_title(source_path))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     result.score.write("musicxml", fp=str(out_path))
+    fix_for_musescore(out_path)
     return TransposeOutcome(out_path, result.interval, report, _warnings(score, source, result.interval))
 
 

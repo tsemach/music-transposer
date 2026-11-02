@@ -94,6 +94,26 @@ test("result buttons open the pdf and reveal the folder", async () => {
   expect(props.revealPath).toHaveBeenCalledWith(SAMPLE_RESULT.pdf);
 });
 
+test("a failing open or reveal tells the user instead of doing nothing", async () => {
+  const { user } = setup(
+    {},
+    {
+      openPath: vi.fn(async () => Promise.reject(new Error("no viewer"))),
+      revealPath: vi.fn(async () => Promise.reject(new Error("no file manager"))),
+    },
+  );
+  await screen.findByText("Engine ready");
+  await choosePdf(user);
+  await user.click(screen.getByRole("button", { name: "Convert" }));
+  await screen.findByRole("heading", { name: "Tenor part ready" });
+
+  await user.click(screen.getByRole("button", { name: "Open PDF" }));
+  expect(await screen.findByText("Could not open the PDF: no viewer")).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Show in folder" }));
+  expect(await screen.findByText("Could not show the folder: no file manager")).toBeInTheDocument();
+});
+
 test("a non-pdf choice shows a message and does not enable convert", async () => {
   const { user } = setup({}, { pickPdf: async () => "/music/photo.png" });
   await screen.findByText("Engine ready");

@@ -6,9 +6,6 @@
   "permissions": [
     "core:default",
     "dialog:default",
-    "opener:default",
-    { "identifier": "opener:allow-open-path", "allow": [{ "path": "**" }] },
-    { "identifier": "opener:allow-reveal-item-in-dir", "allow": [{ "path": "**" }] },
     {
       "identifier": "shell:allow-spawn",
       "allow": [{ "name": "binaries/backend", "sidecar": true, "args": ["serve"] }]

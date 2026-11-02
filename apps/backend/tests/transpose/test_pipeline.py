@@ -1,4 +1,5 @@
 import os
+from xml.etree import ElementTree
 
 import pytest
 from music21 import converter
@@ -165,3 +166,35 @@ def test_explicit_title_overrides_default(tmp_path):
     outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto", title="Chosen Title")
 
     assert "<movement-title>Chosen Title</movement-title>" in outcome.out_path.read_text(encoding="utf-8")
+
+
+def wedge(kind: str, number: int) -> str:
+    return f'<direction><direction-type><wedge type="{kind}" number="{number}"/></direction-type></direction>'
+
+
+def test_hairpins_survive_without_spread_attributes_that_flatten_crescendos(tmp_path):
+    notes = quarters(4)
+    source = write_score(tmp_path, [wedge("crescendo", 1) + notes + wedge("stop", 1), notes])
+
+    outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto")
+
+    written = outcome.out_path.read_text(encoding="utf-8")
+    assert written.count("<wedge") == 2 and 'type="crescendo"' in written and "spread=" not in written
+
+
+def test_tempo_words_and_metronome_share_one_direction_so_they_print_on_one_line(tmp_path):
+    tempo = (
+        '<direction placement="above"><direction-type><words font-weight="bold">With attitude!</words></direction-type>'
+        '<direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>105</per-minute></metronome></direction-type>'
+        '<sound tempo="105"/></direction>'
+    )
+    source = write_score(tmp_path, [tempo + quarters(4), quarters(4)])
+
+    outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto")
+
+    root = ElementTree.parse(outcome.out_path).getroot()
+    tempo_directions = [d for d in root.iter("direction") if d.find(".//metronome") is not None]
+    assert len(tempo_directions) == 1
+    kinds = [direction_type[0].tag for direction_type in tempo_directions[0].findall("direction-type")]
+    assert kinds == ["words", "metronome"]
+    assert tempo_directions[0].find(".//words").text == "With attitude!"
