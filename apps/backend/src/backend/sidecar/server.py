@@ -56,8 +56,12 @@ def serve(stdin: Iterable[str], writer: MessageWriter, handlers: dict[str, Handl
     writer.send(ready())
     requests = _Requests()
     for line in stdin:
-        if line.strip():
+        if not line.strip():
+            continue
+        try:
             _dispatch(line, writer, handlers, requests)
+        except Exception as failure:
+            writer.send(error(None, f"Could not process request: {failure}", "internal"))
     requests.cancel_all_and_wait(SHUTDOWN_GRACE_S)
 
 
@@ -68,7 +72,11 @@ def _dispatch(line: str, writer: MessageWriter, handlers: dict[str, Handler], re
         writer.send(error(bad.request_id, str(bad), "invalid_request"))
         return
     if command == "cancel":
-        writer.send(result(request_id, {"cancelled": requests.cancel(params.get("target"))}))
+        target = params.get("target")
+        if not isinstance(target, int) or isinstance(target, bool):
+            writer.send(error(request_id, "cancel needs an integer target", "invalid_request"))
+            return
+        writer.send(result(request_id, {"cancelled": requests.cancel(target)}))
     elif command not in handlers:
         writer.send(error(request_id, f"Unknown command: {command}", "unknown_command"))
     else:

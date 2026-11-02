@@ -166,3 +166,11 @@ def test_hebrew_params_round_trip(harness):
     harness.send({"id": 1, "cmd": "echo", "params": {"path": path}})
 
     assert harness.wait_for(reply_for(1))["echo"]["path"] == path
+
+
+def test_malformed_cancel_target_replies_error_and_loop_survives(harness):
+    harness.send({"id": 1, "cmd": "cancel", "params": {"target": [1]}})
+    harness.send({"id": 2, "cmd": "echo", "params": {"ok": True}})
+
+    assert harness.wait_for(reply_for(1))["code"] == "invalid_request"
+    assert harness.wait_for(reply_for(2))["echo"] == {"ok": True}

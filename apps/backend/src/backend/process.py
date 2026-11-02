@@ -1,4 +1,5 @@
 import os
+import signal
 import subprocess
 import threading
 import time
@@ -7,6 +8,8 @@ from dataclasses import dataclass
 from .errors import CancelledError
 
 POLL_INTERVAL_S = 0.2
+KILL_WAIT_S = 5
+IS_WINDOWS = os.name == "nt"
 
 
 @dataclass(frozen=True)
@@ -27,12 +30,15 @@ def run_process(
     deadline = time.monotonic() + timeout_s
     with subprocess.Popen(
         command,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
         errors="replace",
         env={**os.environ, **env} if env else None,
+        start_new_session=not IS_WINDOWS,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if IS_WINDOWS else 0,
     ) as process:
         while True:
             try:
@@ -40,13 +46,22 @@ def run_process(
                 return ProcessResult(process.returncode, stderr or "")
             except subprocess.TimeoutExpired:
                 if cancel is not None and cancel.is_set():
-                    _kill(process)
+                    _kill_tree(process)
                     raise CancelledError("Cancelled while running") from None
                 if time.monotonic() >= deadline:
-                    _kill(process)
+                    _kill_tree(process)
                     raise subprocess.TimeoutExpired(command, timeout_s) from None
 
 
-def _kill(process: subprocess.Popen) -> None:
-    process.kill()
-    process.communicate()
+def _kill_tree(process: subprocess.Popen) -> None:
+    if IS_WINDOWS:
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(process.pid)], capture_output=True, check=False)
+    else:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    try:
+        process.communicate(timeout=KILL_WAIT_S)
+    except subprocess.TimeoutExpired:
+        process.kill()

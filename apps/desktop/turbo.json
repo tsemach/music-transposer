@@ -1,13 +1,11 @@
 {
-  "extends": [
-    "//"
-  ],
+  "extends": ["//"],
   "tasks": {
     "build": {
-      "outputs": [
-        "dist/**",
-        "src-tauri/target/release/bundle/**"
-      ]
+      "outputs": ["dist/**", "src-tauri/target/release/bundle/**"]
+    },
+    "dev": {
+      "dependsOn": ["backend#build"]
     }
   }
 }
