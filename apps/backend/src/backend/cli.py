@@ -5,6 +5,7 @@ from pathlib import Path
 from .convert import convert_pdf
 from .errors import BackendError
 from .pipeline import run_pipeline
+from .sidecar.main import run_server
 from .transpose import transpose_musicxml
 from .transpose.saxophones import target_of
 from .validate import validate_musicxml
@@ -20,6 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate = commands.add_parser("validate", help="check a MusicXML file for OMR errors")
     validate.add_argument("musicxml", type=Path)
     validate.add_argument("--strict", action="store_true")
+    commands.add_parser("serve", help="run the JSON sidecar protocol on stdin/stdout")
     run = commands.add_parser("run", help="PDF in, transposed PDF out")
     run.add_argument("pdf", type=Path)
     run.add_argument("--from", dest="source", choices=["alto", "tenor"], required=True)
@@ -39,6 +41,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "serve":
+        return run_server(sys.stdin, sys.stdout)
     try:
         if args.command == "validate":
             return _validate(args)
