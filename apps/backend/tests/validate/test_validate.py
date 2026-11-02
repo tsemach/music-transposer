@@ -18,6 +18,21 @@ def test_validate_non_xml_raises_invalid_input(tmp_path):
         validate_musicxml(path)
 
 
+def test_validate_well_formed_non_musicxml_raises_invalid_input(tmp_path):
+    path = tmp_path / "other.musicxml"
+    path.write_text("<foo/>", encoding="utf-8")
+
+    with pytest.raises(InvalidInputError):
+        validate_musicxml(path)
+
+
+def test_validate_accepts_musicxml_regardless_of_file_extension(tmp_path):
+    path = tmp_path / "score.txt"
+    path.write_text(make_musicxml([quarters(4), quarters(4)]), encoding="utf-8")
+
+    assert validate_musicxml(path).findings == []
+
+
 def test_validate_combines_structure_and_duration_findings(tmp_path):
     path = tmp_path / "score.musicxml"
     path.write_text(make_musicxml([quarters(4), "", quarters(5), quarters(4)]), encoding="utf-8")

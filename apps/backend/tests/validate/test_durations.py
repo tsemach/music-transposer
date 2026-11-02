@@ -26,6 +26,20 @@ def test_short_middle_measure_flagged(tmp_path):
     assert finding.measure == "2"
 
 
+def test_duration_finding_keeps_the_xml_measure_label(tmp_path):
+    measures = [quarters(4), quarters(5), quarters(4)]
+
+    [finding] = findings_for(tmp_path, measures, measure_numbers=["1", "X1", "3"])
+
+    assert finding.measure == "X1"
+
+
+def test_bar_split_around_a_repeat_not_flagged(tmp_path):
+    measures = [quarters(4), quarters(3), quarters(1), quarters(4)]
+
+    assert findings_for(tmp_path, measures, measure_numbers=["1", "2", "2b", "3"]) == []
+
+
 def test_short_first_measure_pickup_not_flagged(tmp_path):
     assert findings_for(tmp_path, [quarters(1), quarters(4), quarters(4)], measure_numbers=["0", "1", "2"]) == []
 
