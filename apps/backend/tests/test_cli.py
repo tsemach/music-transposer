@@ -1,7 +1,9 @@
 from pathlib import Path
 
 from backend import cli
-from backend.errors import AudiverisNotFoundError, InvalidInputError
+from backend.errors import AudiverisNotFoundError, InvalidInputError, ValidationFailedError
+from backend.transpose.pipeline import TransposeOutcome
+from backend.transpose.register import ChosenInterval
 from backend.validate.report import Finding, ValidationReport
 
 ERROR_REPORT = ValidationReport([Finding("empty-measure", "error", "34", "no notes")])
@@ -108,3 +110,57 @@ def test_cli_passes_audiveris_override(monkeypatch, tmp_path):
     cli.main(["convert", str(tmp_path / "a.pdf"), "--audiveris", "/x/Audiveris"])
 
     assert seen["audiveris"] == Path("/x/Audiveris")
+
+
+def outcome(path: Path, warnings: list[str] | None = None) -> TransposeOutcome:
+    return TransposeOutcome(path, ChosenInterval("P4", "same", 0), ValidationReport([]), warnings or [])
+
+
+def test_transpose_prints_path_and_reports_interval_on_stderr(monkeypatch, tmp_path, capsys):
+    result = tmp_path / "out.musicxml"
+    monkeypatch.setattr(cli, "transpose_musicxml", lambda *args: outcome(result, ["something odd"]))
+
+    code = cli.main(["transpose", str(tmp_path / "a.musicxml"), "--from", "alto", "--out", str(result)])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out.strip() == str(result)
+    assert "P4" in captured.err and "something odd" in captured.err
+
+
+def test_transpose_default_output_name_uses_target_kind(monkeypatch, tmp_path):
+    seen = []
+    monkeypatch.setattr(cli, "transpose_musicxml", lambda source, out, *rest: seen.append(out) or outcome(out))
+
+    cli.main(["transpose", str(tmp_path / "song.musicxml"), "--from", "alto"])
+    cli.main(["transpose", str(tmp_path / "song.musicxml"), "--from", "tenor"])
+
+    assert seen == [tmp_path / "song.tenor.musicxml", tmp_path / "song.alto.musicxml"]
+
+
+def test_transpose_validation_failure_lists_findings_and_exits_one(monkeypatch, tmp_path, capsys):
+    def refusing(*args):
+        raise ValidationFailedError(ERROR_REPORT)
+
+    monkeypatch.setattr(cli, "transpose_musicxml", refusing)
+
+    code = cli.main(["transpose", str(tmp_path / "a.musicxml"), "--from", "alto"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "empty-measure" in captured.err
+    assert captured.out == ""
+
+
+def test_transpose_passes_register_and_force_flags(monkeypatch, tmp_path):
+    seen = {}
+
+    def recording(source, out, kind, register, force):
+        seen.update(kind=kind, register=register, force=force)
+        return outcome(out)
+
+    monkeypatch.setattr(cli, "transpose_musicxml", recording)
+
+    cli.main(["transpose", str(tmp_path / "a.musicxml"), "--from", "tenor", "--register", "shifted", "--force"])
+
+    assert seen == {"kind": "tenor", "register": "shifted", "force": True}

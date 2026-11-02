@@ -15,6 +15,7 @@ INTERVALS: dict[SaxophoneKind, dict[ChosenRegister, str]] = {
 }
 
 PART_NAMES: dict[SaxophoneKind, str] = {"alto": "Alto Saxophone", "tenor": "Tenor Saxophone"}
+PART_ABBREVIATIONS: dict[SaxophoneKind, str] = {"alto": "A. Sax.", "tenor": "T. Sax."}
 
 
 def target_of(source: SaxophoneKind) -> SaxophoneKind:
@@ -31,3 +32,7 @@ def instrument_for(kind: SaxophoneKind) -> instrument.Instrument:
 
 def part_name_for(kind: SaxophoneKind) -> str:
     return PART_NAMES[kind]
+
+
+def part_abbreviation_for(kind: SaxophoneKind) -> str:
+    return PART_ABBREVIATIONS[kind]

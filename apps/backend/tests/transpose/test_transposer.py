@@ -83,3 +83,9 @@ def test_written_pitches_survive_export_of_a_score_parsed_from_file(tmp_path):
     transpose_score(parsed, "alto", "same").score.write("musicxml", fp=str(out))
 
     assert names(converter.parse(str(out)))[0] == "F4"
+
+
+def test_part_abbreviation_replaced_with_target():
+    result = transpose_score(make_score(["C5"]), "alto", "same")
+
+    assert result.score.parts[0].partAbbreviation == "T. Sax."

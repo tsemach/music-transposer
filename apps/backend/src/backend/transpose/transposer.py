@@ -4,7 +4,14 @@ from dataclasses import dataclass
 from music21 import instrument, key, stream
 
 from .register import ChosenInterval, choose_interval
-from .saxophones import Register, SaxophoneKind, instrument_for, part_name_for, target_of
+from .saxophones import (
+    Register,
+    SaxophoneKind,
+    instrument_for,
+    part_abbreviation_for,
+    part_name_for,
+    target_of,
+)
 
 
 @dataclass
@@ -39,3 +46,4 @@ def _retarget_instrument(score: stream.Score, kind: SaxophoneKind) -> None:
             part.remove(existing, recurse=True)
         part.insert(0, instrument_for(kind))
         part.partName = part_name_for(kind)
+        part.partAbbreviation = part_abbreviation_for(kind)
