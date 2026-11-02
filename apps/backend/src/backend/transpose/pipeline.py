@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from ..validate.report import ValidationReport
 from .register import ChosenInterval
 from .saxophones import Register, SaxophoneKind, target_of
 from .transposer import transpose_score
+
+SEMITONES_TO_KIND: dict[int, SaxophoneKind] = {-9: "alto", -14: "tenor"}
 
 
 @dataclass
@@ -26,7 +29,8 @@ def transpose_musicxml(
     register: Register = "auto",
     force: bool = False,
 ) -> TransposeOutcome:
-    if out_path.resolve() == source_path.resolve():
+    out_path = out_path if out_path.suffix else out_path.with_name(out_path.name + ".musicxml")
+    if _is_same_file(out_path, source_path):
         raise InvalidInputError(f"Output would overwrite the input file: {source_path}")
     report = validate_musicxml(source_path)
     if report.has_errors and not force:
@@ -39,11 +43,21 @@ def transpose_musicxml(
     return TransposeOutcome(out_path, result.interval, report, _warnings(score, source, result.interval))
 
 
+def _is_same_file(first: Path, second: Path) -> bool:
+    if first.resolve() == second.resolve():
+        return True
+    return first.exists() and second.exists() and os.path.samefile(first, second)
+
+
 def _warnings(score: stream.Score, source: SaxophoneKind, interval: ChosenInterval) -> list[str]:
     warnings = []
     declared = _declared_kind(score)
     if declared and declared != source:
-        warnings.append(f"Part is named for a {declared} saxophone but --from {source} was given")
+        article = "an" if declared == "alto" else "a"
+        warnings.append(
+            f"Part is declared as {article} {declared} saxophone (name or transposition) "
+            f"but --from {source} was given"
+        )
     if interval.out_of_range:
         warnings.append(
             f"{interval.out_of_range} notes fall outside the written range of the "
@@ -53,8 +67,13 @@ def _warnings(score: stream.Score, source: SaxophoneKind, interval: ChosenInterv
 
 
 def _declared_kind(score: stream.Score) -> SaxophoneKind | None:
-    names = [part.partName for part in score.parts]
-    names += [item.instrumentName for item in score.recurse().getElementsByClass(instrument.Instrument)]
+    instruments = list(score.recurse().getElementsByClass(instrument.Instrument))
+    names = [part.partName for part in score.parts] + [item.instrumentName for item in instruments]
     text = " ".join(name for name in names if name).lower()
-    kinds = [kind for kind in ("alto", "tenor") if kind in text]
-    return kinds[0] if len(kinds) == 1 else None
+    kinds = {kind for kind in ("alto", "tenor") if kind in text}
+    kinds |= {
+        SEMITONES_TO_KIND[item.transposition.semitones]
+        for item in instruments
+        if item.transposition is not None and item.transposition.semitones in SEMITONES_TO_KIND
+    }
+    return next(iter(kinds)) if len(kinds) == 1 else None

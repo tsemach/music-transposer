@@ -1,3 +1,4 @@
+from music21 import harmony
 from score_helpers import make_score
 
 from backend.transpose.register import choose_interval
@@ -37,3 +38,12 @@ def test_chord_pitches_all_counted():
     chosen = choose_interval(make_score(["D6 C3"]), "alto")
 
     assert (chosen.register, chosen.out_of_range) == ("shifted", 1)
+
+
+def test_chord_symbols_are_not_counted_as_notes():
+    score = make_score(["D6"])
+    score.parts[0].measure(1).insert(0, harmony.ChordSymbol("Cmaj7"))
+
+    chosen = choose_interval(score, "alto")
+
+    assert (chosen.register, chosen.out_of_range) == ("shifted", 0)

@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from music21 import converter
 from musicxml_builder import make_musicxml, quarters
@@ -87,4 +89,63 @@ def test_part_named_tenor_with_from_alto_warns(tmp_path):
 
     outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto")
 
-    assert any("tenor" in warning.lower() for warning in outcome.warnings)
+    assert any("declared as a tenor" in warning for warning in outcome.warnings)
+
+
+def test_part_named_alto_with_from_tenor_warns(tmp_path):
+    source = write_score(
+        tmp_path,
+        [quarters(4)],
+        xml_edit=lambda xml: xml.replace("<part-name>Test</part-name>", "<part-name>Alto Sax</part-name>"),
+    )
+
+    outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "tenor")
+
+    assert any("declared as an alto" in warning for warning in outcome.warnings)
+
+
+TENOR_TRANSPOSE = (
+    "<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic>"
+    "<octave-change>-1</octave-change></transpose>"
+)
+
+
+def test_transposition_tag_conflicting_with_from_warns_even_without_a_name(tmp_path):
+    path = tmp_path / "in.musicxml"
+    path.write_text(make_musicxml([quarters(4)], first_attributes=TENOR_TRANSPOSE), encoding="utf-8")
+
+    outcome = transpose_musicxml(path, tmp_path / "out.musicxml", "alto")
+
+    assert any("declared as a tenor" in warning for warning in outcome.warnings)
+
+
+def test_output_without_extension_gets_musicxml_suffix(tmp_path):
+    source = write_score(tmp_path, [quarters(4)])
+
+    outcome = transpose_musicxml(source, tmp_path / "result", "alto")
+
+    assert outcome.out_path == tmp_path / "result.musicxml"
+    assert outcome.out_path.is_file()
+
+
+def test_extensionless_output_that_resolves_to_input_is_refused(tmp_path):
+    source = write_score(tmp_path, [quarters(4)], name="song.musicxml")
+
+    with pytest.raises(InvalidInputError):
+        transpose_musicxml(source, tmp_path / "song", "alto")
+
+    assert "<step>C</step>" in source.read_text(encoding="utf-8")
+
+
+def test_hard_link_to_input_is_refused(tmp_path):
+    source = write_score(tmp_path, [quarters(4)])
+    link = tmp_path / "link.musicxml"
+    try:
+        os.link(source, link)
+    except OSError:
+        pytest.skip("hard links not supported here")
+
+    with pytest.raises(InvalidInputError):
+        transpose_musicxml(source, link, "alto")
+
+    assert "<step>C</step>" in source.read_text(encoding="utf-8")
