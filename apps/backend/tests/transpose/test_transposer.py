@@ -1,4 +1,5 @@
-from music21 import instrument, key, tie
+from music21 import converter, instrument, key, tie
+from musicxml_builder import make_musicxml, quarters
 from score_helpers import make_score
 
 from backend.transpose.transposer import transpose_score
@@ -71,3 +72,14 @@ def test_written_musicxml_declares_target_transposition(tmp_path):
     xml = path.read_text(encoding="utf-8")
     assert "<chromatic>-2</chromatic>" in xml
     assert "<octave-change>-1</octave-change>" in xml
+
+
+def test_written_pitches_survive_export_of_a_score_parsed_from_file(tmp_path):
+    source = tmp_path / "in.musicxml"
+    source.write_text(make_musicxml([quarters(4)]), encoding="utf-8")
+    parsed = converter.parse(str(source), format="musicxml")
+    out = tmp_path / "out.musicxml"
+
+    transpose_score(parsed, "alto", "same").score.write("musicxml", fp=str(out))
+
+    assert names(converter.parse(str(out)))[0] == "F4"

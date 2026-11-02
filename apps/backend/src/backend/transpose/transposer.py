@@ -32,7 +32,9 @@ def _ensure_initial_key_signature(score: stream.Score) -> None:
 
 
 def _retarget_instrument(score: stream.Score, kind: SaxophoneKind) -> None:
+    score.atSoundingPitch = False
     for part in score.parts:
+        part.atSoundingPitch = False
         for existing in list(part.recurse().getElementsByClass(instrument.Instrument)):
             part.remove(existing, recurse=True)
         part.insert(0, instrument_for(kind))

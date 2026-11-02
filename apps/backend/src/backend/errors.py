@@ -1,3 +1,9 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .validate.report import ValidationReport
+
+
 class BackendError(Exception):
     pass
 
@@ -19,3 +25,10 @@ class OmrFailedError(BackendError):
         super().__init__(f"Audiveris failed with exit code {returncode}: {stderr}")
         self.returncode = returncode
         self.stderr = stderr
+
+
+class ValidationFailedError(BackendError):
+    def __init__(self, report: "ValidationReport"):
+        findings = "; ".join(finding.format() for finding in report.errors)
+        super().__init__(f"MusicXML has validation errors (use --force to convert anyway): {findings}")
+        self.report = report
