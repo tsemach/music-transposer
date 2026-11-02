@@ -1,3 +1,3 @@
 import { config } from "@repo/eslint-config/react-internal";
 
-export default config;
+export default [{ ignores: ["dist/**", "src-tauri/**"] }, ...config];

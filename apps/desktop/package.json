@@ -4,8 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev": "tauri dev",
+    "dev:web": "vite",
+    "build": "tauri build",
+    "build:web": "tsc --noEmit && vite build",
     "test": "vitest run",
     "lint": "eslint --max-warnings 0",
     "check-types": "tsc --noEmit",
