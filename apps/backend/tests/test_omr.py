@@ -1,11 +1,12 @@
 import os
 import shutil
+import threading
 import time
 from pathlib import Path
 
 import pytest
 
-from backend.errors import InvalidInputError, NoOutputError, OmrFailedError
+from backend.errors import CancelledError, InvalidInputError, NoOutputError, OmrFailedError
 from backend.omr import run_omr
 
 FAKE = Path(__file__).parent / "fake_audiveris.py"
@@ -114,3 +115,15 @@ def test_stale_mxl_alone_does_not_count_as_output(monkeypatch, tmp_path, audiver
 
     with pytest.raises(NoOutputError):
         run_omr(pdf, out_dir, audiveris)
+
+
+def test_cancel_kills_audiveris_and_raises_cancelled(monkeypatch, tmp_path, audiveris, pdf):
+    monkeypatch.setenv("FAKE_MODE", "sleep")
+    cancel = threading.Event()
+    threading.Timer(0.5, cancel.set).start()
+    started = time.monotonic()
+
+    with pytest.raises(CancelledError):
+        run_omr(pdf, tmp_path / "out", audiveris, cancel=cancel)
+
+    assert time.monotonic() - started < 10

@@ -1,24 +1,25 @@
 import subprocess
+import threading
 from pathlib import Path
 
 from .errors import InvalidInputError, NoOutputError, OmrFailedError
+from .process import run_process
 
 
-def run_omr(pdf: Path, out_dir: Path, audiveris: Path, timeout_s: int = 600) -> list[Path]:
+def run_omr(
+    pdf: Path,
+    out_dir: Path,
+    audiveris: Path,
+    timeout_s: int = 600,
+    cancel: threading.Event | None = None,
+) -> list[Path]:
     _require_pdf(pdf)
     out_dir.mkdir(parents=True, exist_ok=True)
     before = _snapshot_mxl(out_dir)
     command = [str(audiveris), "-batch", "-export", "-output", str(out_dir), "--", str(pdf)]
 
     try:
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout_s,
-        )
+        completed = run_process(command, timeout_s, cancel)
     except subprocess.TimeoutExpired as error:
         raise OmrFailedError(-1, f"timed out after {timeout_s}s") from error
 
