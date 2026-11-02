@@ -2,6 +2,7 @@ from pathlib import Path
 
 from backend import cli
 from backend.errors import AudiverisNotFoundError, InvalidInputError, ValidationFailedError
+from backend.pipeline import PipelineResult
 from backend.transpose.pipeline import TransposeOutcome
 from backend.transpose.register import ChosenInterval
 from backend.validate.report import Finding, ValidationReport
@@ -164,3 +165,41 @@ def test_transpose_passes_register_and_force_flags(monkeypatch, tmp_path):
     cli.main(["transpose", str(tmp_path / "a.musicxml"), "--from", "tenor", "--register", "shifted", "--force"])
 
     assert seen == {"kind": "tenor", "register": "shifted", "force": True}
+
+
+def pipeline_result(root: Path) -> PipelineResult:
+    return PipelineResult(
+        root / "a.musicxml",
+        root / "a.tenor.musicxml",
+        root / "a.tenor.pdf",
+        ChosenInterval("P4", "same", 0),
+        ValidationReport([]),
+        ["heads up"],
+    )
+
+
+def test_run_prints_pdf_path_and_progress(monkeypatch, tmp_path, capsys):
+    def fake_run(pdf, out_dir, source, register, force, audiveris, musescore, on_progress):
+        on_progress("omr", 5)
+        return pipeline_result(out_dir)
+
+    monkeypatch.setattr(cli, "run_pipeline", fake_run)
+
+    code = cli.main(["run", str(tmp_path / "a.pdf"), "--from", "alto", "--out-dir", str(tmp_path / "o")])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out.strip() == str(tmp_path / "o" / "a.tenor.pdf")
+    assert "omr" in captured.err and "heads up" in captured.err and "P4" in captured.err
+
+
+def test_run_validation_failure_exits_one(monkeypatch, tmp_path, capsys):
+    def refusing(*args, **kwargs):
+        raise ValidationFailedError(ERROR_REPORT)
+
+    monkeypatch.setattr(cli, "run_pipeline", refusing)
+
+    code = cli.main(["run", str(tmp_path / "a.pdf"), "--from", "alto"])
+
+    assert code == 1
+    assert "empty-measure" in capsys.readouterr().err

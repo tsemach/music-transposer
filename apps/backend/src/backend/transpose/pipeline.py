@@ -31,11 +31,12 @@ def transpose_musicxml(
     register: Register = "auto",
     force: bool = False,
     title: str | None = None,
+    report: ValidationReport | None = None,
 ) -> TransposeOutcome:
     out_path = out_path if out_path.suffix else out_path.with_name(out_path.name + ".musicxml")
     if _is_same_file(out_path, source_path):
         raise InvalidInputError(f"Output would overwrite the input file: {source_path}")
-    report = validate_musicxml(source_path)
+    report = report if report is not None else validate_musicxml(source_path)
     if report.has_errors and not force:
         raise ValidationFailedError(report)
 
