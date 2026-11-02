@@ -89,3 +89,14 @@ def test_part_abbreviation_replaced_with_target():
     result = transpose_score(make_score(["C5"]), "alto", "same")
 
     assert result.score.parts[0].partAbbreviation == "T. Sax."
+
+
+def test_title_written_and_music21_composer_removed(tmp_path):
+    result = transpose_score(make_score(["C5"]), "alto", "same", title="My Piece")
+    path = tmp_path / "titled.musicxml"
+
+    result.score.write("musicxml", fp=str(path))
+
+    xml = path.read_text(encoding="utf-8")
+    assert "<movement-title>My Piece</movement-title>" in xml
+    assert "Music21" not in xml

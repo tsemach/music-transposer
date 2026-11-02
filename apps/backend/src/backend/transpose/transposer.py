@@ -1,7 +1,7 @@
 import copy
 from dataclasses import dataclass
 
-from music21 import instrument, key, stream
+from music21 import instrument, key, metadata, stream
 
 from .register import ChosenInterval, choose_interval
 from .saxophones import (
@@ -21,13 +21,18 @@ class TransposeResult:
 
 
 def transpose_score(
-    score: stream.Score, source: SaxophoneKind, register: Register = "auto"
+    score: stream.Score,
+    source: SaxophoneKind,
+    register: Register = "auto",
+    title: str | None = None,
 ) -> TransposeResult:
     working = copy.deepcopy(score)
     _ensure_initial_key_signature(working)
     chosen = choose_interval(working, source, register)
     transposed = working.transpose(chosen.name)
     _retarget_instrument(transposed, target_of(source))
+    if title is not None:
+        transposed.metadata = metadata.Metadata(title=title, composer="")
     return TransposeResult(transposed, chosen)
 
 

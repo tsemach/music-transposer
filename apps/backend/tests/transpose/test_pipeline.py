@@ -149,3 +149,19 @@ def test_hard_link_to_input_is_refused(tmp_path):
         transpose_musicxml(source, link, "alto")
 
     assert "<step>C</step>" in source.read_text(encoding="utf-8")
+
+
+def test_default_title_from_file_stem(tmp_path):
+    source = write_score(tmp_path, [quarters(4)], name="gymnopedie-no-1-alto-saxophone.musicxml")
+
+    outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto")
+
+    assert "<movement-title>Gymnopedie No 1</movement-title>" in outcome.out_path.read_text(encoding="utf-8")
+
+
+def test_explicit_title_overrides_default(tmp_path):
+    source = write_score(tmp_path, [quarters(4)], name="whatever.musicxml")
+
+    outcome = transpose_musicxml(source, tmp_path / "out.musicxml", "alto", title="Chosen Title")
+
+    assert "<movement-title>Chosen Title</movement-title>" in outcome.out_path.read_text(encoding="utf-8")
