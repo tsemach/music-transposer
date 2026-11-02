@@ -10,6 +10,7 @@ import { ModePicker } from "./components/ModePicker";
 import { ProgressView } from "./components/ProgressView";
 import { ResultCard } from "./components/ResultCard";
 import { ToolStatus, type ToolKey } from "./components/ToolStatus";
+import { logToShell } from "./lib/diagnostics";
 import { isPdf } from "./lib/fileName";
 import * as tauriActions from "./lib/tauriActions";
 import { loadSettings, saveSettings, type Settings } from "./state/settings";
@@ -47,6 +48,10 @@ export function App({
   const { job, run, cancel, reset } = useJobRunner(backend);
 
   useEffect(() => saveSettings(localStorage, settings), [settings]);
+  useEffect(() => logToShell(`engine ${status}`), [status]);
+  useEffect(() => {
+    if (doctor) logToShell(`tools audiveris=${doctor.audiveris ?? "none"} musescore=${doctor.musescore ?? "none"}`);
+  }, [doctor]);
 
   useEffect(() => {
     if (!backend) return;
