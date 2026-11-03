@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Product name in all UI copy and window title is **Ascurix**. Real resources keep the old name: Tauri identifier `com.tsemach.doron-desktop`; the repo/directory name is untouched (project naming rule).
+- Product name in all UI copy and window title is **Music Transpose**. Real resources keep the old name: Tauri identifier `com.tsemach.doron-desktop`; the repo/directory name is untouched (project naming rule).
 - Sidecar rules from CLAUDE.md: spawned once at app start, waits for `ready` before sending, every request has an `id`, file **paths** only, stdin closing ends it; UI rejects pending calls when it closes and offers restart.
 - Capability for the sidecar: `{ "identifier": "shell:allow-spawn", "allow": [{ "name": "binaries/backend", "sidecar": true, "args": ["serve"] }] }`.
 - Audiveris and MuseScore are **not** bundled; the UI shows detection status and lets the user pick the executables.
@@ -52,7 +52,7 @@ apps/backend/scripts/build_sidecar.py, package.json (build script)
 
 **Interfaces:** Produces `apps/desktop` workspace package named `desktop` with scripts `dev` (vite), `build` (`tsc --noEmit && vite build`), `test` (`vitest run`), `tauri` (`tauri`), `check-types`.
 
-- [ ] **Step 1:** Write `smoke.test.tsx`: renders `<App />` and expects the heading "Ascurix".
+- [ ] **Step 1:** Write `smoke.test.tsx`: renders `<App />` and expects the heading "Music Transpose".
 - [ ] **Step 2:** Create the package files with dependencies at the versions in the survey (react 19, vite, vitest, jsdom, Testing Library, `@tauri-apps/api`, plugins, `@tauri-apps/cli`). Run `pnpm install` from the repo root. Run `pnpm --filter desktop test`. Expected: FAIL (no heading).
 - [ ] **Step 3:** Implement the placeholder `App` with the heading. Run test. Expected: PASS. Run `pnpm --filter desktop build`. Expected: success.
 - [ ] **Step 4:** Commit.
@@ -126,7 +126,7 @@ apps/backend/scripts/build_sidecar.py, package.json (build script)
 
 **Files:** Create `src-tauri/{Cargo.toml,build.rs,tauri.conf.json,capabilities/default.json,src/main.rs,src/lib.rs,icons/*}`; modify `.gitignore` (`src-tauri/target`, `src-tauri/binaries`, `src-tauri/gen`).
 
-**Interfaces:** `tauri.conf.json`: productName `Ascurix`, identifier `com.tsemach.doron-desktop`, one 880×640 window titled Ascurix, `build.devUrl` `http://localhost:1420`, `frontendDist` `../dist`, `bundle.externalBin: ["binaries/backend"]`. `capabilities/default.json`: `core:default`, `dialog:default`, `opener:default` plus `opener:allow-open-path` and `opener:allow-reveal-item-in-dir` for any path, and the sidecar spawn permission from Global Constraints. Rust exposes one command `ui_log(message: String)` printing to stderr (diagnostics for headless smoke tests).
+**Interfaces:** `tauri.conf.json`: productName `Music Transpose`, identifier `com.tsemach.doron-desktop`, one 880×640 window titled Music Transpose, `build.devUrl` `http://localhost:1420`, `frontendDist` `../dist`, `bundle.externalBin: ["binaries/backend"]`. `capabilities/default.json`: `core:default`, `dialog:default`, `opener:default` plus `opener:allow-open-path` and `opener:allow-reveal-item-in-dir` for any path, and the sidecar spawn permission from Global Constraints. Rust exposes one command `ui_log(message: String)` printing to stderr (diagnostics for headless smoke tests).
 
 - [ ] **Step 1:** Generate icons from a simple source image. Write the Rust files and config.
 - [ ] **Step 2:** Create a placeholder sidecar binary named with the host target triple (`rustc -vV`) so the build can start. Run `cargo check` in `src-tauri`. Expected: success (first run downloads crates; run in the background).

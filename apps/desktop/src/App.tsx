@@ -116,7 +116,7 @@ export function App({
     <main className="app">
       <header className="header">
         <div>
-          <h1>Ascurix</h1>
+          <h1>Music Transpose</h1>
           <p className="tagline">Transpose sheet music between alto and tenor saxophone</p>
         </div>
         <span role="status" className={`engine engine-${status}`}>

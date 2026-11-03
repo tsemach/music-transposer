@@ -162,4 +162,4 @@
 - **Type consistency:** `find_audiveris` → `Path`; `run_omr` takes that `Path`; `extract_musicxml` takes an `.mxl` `Path`; `convert_pdf` chains all three; error names match across tasks.
 - **Review Focus:** each of the five lines has a named test in Tasks 5–6 (path encoding, bad input, no output, timeout, stale files).
 - **Depends on Task 1:** default install dirs (Task 3), output naming and multi-file behaviour (Task 5). If Task 1 contradicts the CLAUDE.md call shape, fix Task 5 before implementing.
-- **My calls:** package named `backend` (avoids picking between Ascurix and `doron-desktop`); env var `AUDIVERIS_PATH`; 600 s default timeout; stale-file handling by mtime snapshot.
+- **My calls:** package named `backend` (avoids picking between Music Transpose and `doron-desktop`); env var `AUDIVERIS_PATH`; 600 s default timeout; stale-file handling by mtime snapshot.

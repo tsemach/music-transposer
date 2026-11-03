@@ -1,4 +1,4 @@
-# Ascurix — PDF → MusicXML, then alto↔tenor conversion (Design)
+# Music Transpose — PDF → MusicXML, then alto↔tenor conversion (Design)
 
 Status: draft for approval. Companion to `CLAUDE.md`, which holds the stack and sidecar protocol; this doc does not repeat them.
 
