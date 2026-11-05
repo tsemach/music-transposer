@@ -1,0 +1,117 @@
+name: "Release"
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      tag_name: ${{ steps.check.outputs.tag_name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version and tags
+        id: check
+        run: |
+          VERSION=$(jq -r '.version' apps/desktop/src-tauri/tauri.conf.json)
+          TAG_NAME="v$VERSION"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run: building $TAG_NAME."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          elif git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists. Skipping release build."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag $TAG_NAME does not exist. Building release."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish-tauri:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-22.04
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+          - name: macOS (Intel)
+            os: macos-15-intel
+          - name: Windows
+            os: windows-latest
+    name: "Build ${{ matrix.name }}"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./apps/desktop/src-tauri -> target"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: apps/backend/pyproject.toml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend sidecar
+        run: |
+          python -m pip install -e "apps/backend[dev]"
+          python apps/backend/scripts/build_sidecar.py
+
+      - name: Build and Release Tauri App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: "./apps/desktop"
+          tagName: ${{ needs.check-version.outputs.tag_name }}
+          releaseName: "Music Transpose ${{ needs.check-version.outputs.tag_name }}"
+          releaseBody: "Download the installer for your system from the assets below."
+          releaseDraft: false
+          prerelease: false
