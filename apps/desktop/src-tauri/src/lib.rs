@@ -1,4 +1,5 @@
 mod host_open;
+mod read_pdf;
 #[tauri::command]
 fn ui_log(message: String) {
     eprintln!("[ui] {message}");
@@ -9,7 +10,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![ui_log, host_open::open_in_host])
+        .invoke_handler(tauri::generate_handler![ui_log, host_open::open_in_host, read_pdf::read_pdf_bytes])
         .run(tauri::generate_context!())
         .expect("error while running Music Transpose");
 }

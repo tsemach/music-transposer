@@ -11,3 +11,6 @@ export const pickExecutable = (label: string) => pickOne({ directory: false, tit
 export const pickFolder = () => pickOne({ directory: true, title: "Choose where to save the results" });
 export const openFile = (path: string) => invoke<void>("open_in_host", { path, reveal: false });
 export const revealFile = (path: string) => invoke<void>("open_in_host", { path, reveal: true });
+export async function readPdfBytes(path: string): Promise<Uint8Array> {
+  return new Uint8Array(await invoke<ArrayBuffer>("read_pdf_bytes", { path }));
+}

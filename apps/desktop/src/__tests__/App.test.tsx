@@ -212,3 +212,85 @@ test("the last chosen direction is restored from settings", async () => {
 
   expect(await screen.findByRole("radio", { name: "Tenor → Alto" })).toBeChecked();
 });
+
+function fakePdfLoader() {
+  const loaded: string[] = [];
+  const loadPdf = vi.fn(async (path: string) => {
+    loaded.push(path);
+    return {
+      pageAspects: [1.4, 1.4, 1.4],
+      renderPage: () => ({ cancel: () => undefined, done: Promise.resolve() }),
+      destroy: () => undefined,
+    };
+  });
+  return { loadPdf, loaded };
+}
+
+test("choosing a pdf displays its pages", async () => {
+  const { loadPdf, loaded } = fakePdfLoader();
+  const { user } = setup({}, { loadPdf });
+  await screen.findByText("Engine ready");
+  expect(screen.getByRole("button", { name: "Open a PDF to begin" })).toBeInTheDocument();
+
+  await choosePdf(user);
+
+  expect(await screen.findAllByLabelText(/^Page \d$/)).toHaveLength(3);
+  expect(loaded).toEqual(["/music/שיר.pdf"]);
+});
+
+test("the open button in the empty viewer also chooses a pdf", async () => {
+  const { loadPdf } = fakePdfLoader();
+  const { user } = setup({}, { loadPdf });
+
+  await user.click(await screen.findByRole("button", { name: "Open a PDF to begin" }));
+
+  expect(await screen.findAllByLabelText(/^Page \d$/)).toHaveLength(3);
+});
+
+test("splitting the view shows a second pane that continues the same document", async () => {
+  const { loadPdf } = fakePdfLoader();
+  const { user } = setup({}, { loadPdf });
+  await choosePdf(user);
+  expect(screen.queryByRole("region", { name: "Second pane" })).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Side by side" }));
+
+  expect(screen.getByRole("region", { name: "Second pane" })).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Continue reading" })).toBeChecked();
+  expect(screen.getByRole("separator", { name: "Resize panes" })).toBeInTheDocument();
+  expect(loadPdf).toHaveBeenCalledTimes(1);
+});
+
+test("a finished conversion opens the transposed pdf next to the original", async () => {
+  const { loadPdf, loaded } = fakePdfLoader();
+  const { user } = setup({}, { loadPdf });
+  await screen.findByText("Engine ready");
+  await choosePdf(user);
+
+  await user.click(screen.getByRole("button", { name: "Convert" }));
+  await screen.findByRole("heading", { name: "Tenor part ready" });
+
+  expect(await screen.findByRole("region", { name: "Second pane" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Second pane document" })).toHaveValue("transposed");
+  expect(loaded).toContain(SAMPLE_RESULT.pdf);
+});
+
+test("a pdf that cannot be read is reported in the viewer", async () => {
+  const loadPdf = vi.fn(async () => Promise.reject(new Error("corrupt file")));
+  const { user } = setup({}, { loadPdf });
+
+  await choosePdf(user);
+
+  expect(await screen.findByText("Could not display the PDF: corrupt file")).toBeInTheDocument();
+});
+
+test("the side panel can be hidden to give the music the whole window", async () => {
+  const { user } = setup();
+  await screen.findByText("Engine ready");
+
+  await user.click(screen.getByRole("button", { name: "Hide side panel" }));
+
+  expect(screen.queryByRole("button", { name: "Convert" })).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Show side panel" }));
+  expect(screen.getByRole("button", { name: "Convert" })).toBeInTheDocument();
+});
