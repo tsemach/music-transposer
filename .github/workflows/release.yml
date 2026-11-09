@@ -42,9 +42,27 @@ jobs:
             echo "should_release=true" >> "$GITHUB_OUTPUT"
           fi
 
-  publish-tauri:
+  create-release:
     needs: check-version
     if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ needs.check-version.outputs.tag_name }}
+    steps:
+      - name: Create the release, or clear the assets of an existing one
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' |
+              while read -r asset; do gh release delete-asset "$TAG" "$asset" -R "$GITHUB_REPOSITORY" -y; done
+          else
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Music Transpose $TAG" \
+              --notes "Download the installer for your system from the assets below."
+          fi
+
+  publish-tauri:
+    needs: [check-version, create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -104,14 +122,29 @@ jobs:
           python -m pip install -e "apps/backend[dev]"
           python apps/backend/scripts/build_sidecar.py
 
-      - name: Build and Release Tauri App
-        uses: tauri-apps/tauri-action@v0
+      # Tauri downloads its packaging tools from github.com while bundling, and
+      # those downloads fail with transient 504s. A retry only repeats the bundling.
+      - name: Build installers
+        working-directory: apps/desktop
+        run: |
+          for attempt in 1 2 3 4; do
+            if pnpm tauri build --verbose; then exit 0; fi
+            echo "Build attempt $attempt failed."
+            sleep 30
+          done
+          exit 1
+
+      - name: Upload installers to the release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: "./apps/desktop"
-          tagName: ${{ needs.check-version.outputs.tag_name }}
-          releaseName: "Music Transpose ${{ needs.check-version.outputs.tag_name }}"
-          releaseBody: "Download the installer for your system from the assets below."
-          releaseDraft: false
-          prerelease: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.check-version.outputs.tag_name }}
+        run: |
+          mkdir staging
+          find apps/desktop/src-tauri/target/release/bundle -type f \
+            \( -name '*.dmg' -o -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.msi' -o -name '*-setup.exe' \) |
+            while read -r file; do
+              name=$(basename "$file")
+              cp "$file" "staging/${name// /.}"
+            done
+          ls -l staging
+          gh release upload "$TAG" staging/* -R "$GITHUB_REPOSITORY" --clobber
